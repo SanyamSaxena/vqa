@@ -9,7 +9,7 @@
 import matplotlib
 matplotlib.use('Agg')
 
-from models import MCBModel, model
+from models import model
 import VQALoader
 import VocabEncoder
 import torchvision.transforms as T
@@ -148,12 +148,12 @@ if __name__ == '__main__':
     learning_rate = 0.00001
     ratio_images_to_use = 1
     modeltype = 'Simple'
-    Dataset = 'HR'
+    Dataset = 'LR'
 
     if Dataset == 'LR':
-        data_path = '../AutomaticDB/'#'/raid/home/sylvain/RSVQA_USGS_data/'#'../AutomaticDB/'
-        allquestionsJSON = os.path.join(data_path, 'questions.json')
-        allanswersJSON = os.path.join(data_path, 'answers.json')
+        data_path = '../dataset/'#'/raid/home/sylvain/RSVQA_USGS_data/'#'../AutomaticDB/'
+        allquestionsJSON = os.path.join(data_path, 'all_questions.json')
+        allanswersJSON = os.path.join(data_path, 'all_answers.json')
         questionsJSON = os.path.join(data_path, 'LR_split_train_questions.json')
         answersJSON = os.path.join(data_path, 'LR_split_train_answers.json')
         imagesJSON = os.path.join(data_path, 'LR_split_train_images.json')

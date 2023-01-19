@@ -1,1 +1,6 @@
 dataset/
+external/
+vqa_model/__pycache__/
+vqa_model/data/
+vqa_model/models/__pycache__/
+
