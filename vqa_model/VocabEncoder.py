@@ -134,9 +134,5 @@ class VocabEncoder():
         res = res[:-1]
         if self.questions:
             res += "?"
-        return res
-        
-            
-            
-            
-        
+        return res     
+          
