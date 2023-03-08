@@ -9,6 +9,7 @@
 import os.path
 import json
 import random
+from transformers import VisualBertModel, BertTokenizer, VisualBertConfig
 
 import numpy as np
 from skimage import io
@@ -20,15 +21,18 @@ RANDOM_SEED = 42
 
 
 class VQALoader(Dataset):
-    def __init__(self, imgFolder, images_file, questions_file, answers_file, encoder_questions, encoder_answers, train=True, ratio_images_to_use = 1, transform=None, patch_size=512):
+    def __init__(self, imgFolder, images_file, questions_file, answers_file, encoder_questions, encoder_answers, model_type, train=True, ratio_images_to_use = 1, transform=None, patch_size=512):
         self.transform = transform
         self.encoder_questions = encoder_questions
         self.encoder_answers = encoder_answers
         self.train = train
-        
+        self.model_type = model_type
         
         vocab = self.encoder_questions.words
-        self.relationalWords = [vocab['top'], vocab['bottom'], vocab['right'], vocab['left']]
+        if model_type == 'VQAGAP_qbert_Model' or model_type == 'VQAGAP_bert_Model':                     
+            self.relationalWords = ['top', 'bottom', 'right', 'left']
+        else:
+            self.relationalWords = [vocab['top'], vocab['bottom'], vocab['right'], vocab['left']]
         
         with open(questions_file) as json_data:
             self.questionsJSON = json.load(json_data)
@@ -56,10 +60,13 @@ class VQALoader(Dataset):
                 question = self.questionsJSON['questions'][questionid]
             
                 question_str = question["question"]
+                # self.question_str = question_str
                 type_str = question["type"]
                 answer_str = self.answersJSON['answers'][question["answers_ids"][0]]['answer']
-            
-                self.images_questions_answers[index] = [self.encoder_questions.encode(question_str), self.encoder_answers.encode(answer_str), i, type_str]
+                if model_type == 'VQAGAP_qbert_Model' or model_type == 'VQAGAP_bert_Model':     
+                    self.images_questions_answers[index] = [question_str, self.encoder_answers.encode(answer_str), i, type_str]
+                else:
+                    self.images_questions_answers[index] = [self.encoder_questions.encode(question_str), self.encoder_answers.encode(answer_str), i, type_str]
                 index += 1
     def __len__(self):
         return self.len
@@ -76,9 +83,16 @@ class VQALoader(Dataset):
                 img = np.rot90(img, k=1)
             if random.random() < .5:
                 img = np.rot90(img, k=3)
+
         if self.transform:
             imgT = self.transform(img.copy())
-        if self.train:
-            return np.array(question[0], dtype='int16'), np.array(question[1], dtype='int16'), imgT, question[3]
+        if self.model_type == 'VQAGAP_qbert_Model' or self.model_type == 'VQAGAP_bert_Model':
+            if self.train:
+                return question[0], np.array(question[1], dtype='int16'), imgT, question[3]
+            else:
+                return question[0], np.array(question[1], dtype='int16'), imgT, question[3], T.ToTensor()(img / 255)
         else:
-            return np.array(question[0], dtype='int16'), np.array(question[1], dtype='int16'), imgT, question[3], T.ToTensor()(img / 255)   
+            if self.train:
+                return np.array(question[0], dtype='int16'), np.array(question[1], dtype='int16'), imgT, question[3]
+            else:
+                return np.array(question[0], dtype='int16'), np.array(question[1], dtype='int16'), imgT, question[3], T.ToTensor()(img / 255)   
