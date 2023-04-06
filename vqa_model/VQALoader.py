@@ -29,7 +29,7 @@ class VQALoader(Dataset):
         self.model_type = model_type
         
         vocab = self.encoder_questions.words
-        if model_type == 'VQAGAP_qbert_Model' or model_type == 'VQAGAP_bert_Model':                     
+        if model_type == 'VQAGAP_qbert_Model' or model_type == 'VQAGAP_bert_Model' or self.model_type == 'VQAGAP_qbert_dca_Model':                     
             self.relationalWords = ['top', 'bottom', 'right', 'left']
         else:
             self.relationalWords = [vocab['top'], vocab['bottom'], vocab['right'], vocab['left']]
@@ -63,7 +63,7 @@ class VQALoader(Dataset):
                 # self.question_str = question_str
                 type_str = question["type"]
                 answer_str = self.answersJSON['answers'][question["answers_ids"][0]]['answer']
-                if model_type == 'VQAGAP_qbert_Model' or model_type == 'VQAGAP_bert_Model':     
+                if model_type == 'VQAGAP_qbert_Model' or model_type == 'VQAGAP_bert_Model' or self.model_type == 'VQAGAP_qbert_dca_Model':     
                     self.images_questions_answers[index] = [question_str, self.encoder_answers.encode(answer_str), i, type_str]
                 else:
                     self.images_questions_answers[index] = [self.encoder_questions.encode(question_str), self.encoder_answers.encode(answer_str), i, type_str]
@@ -86,7 +86,7 @@ class VQALoader(Dataset):
 
         if self.transform:
             imgT = self.transform(img.copy())
-        if self.model_type == 'VQAGAP_qbert_Model' or self.model_type == 'VQAGAP_bert_Model':
+        if self.model_type == 'VQAGAP_qbert_Model' or self.model_type == 'VQAGAP_bert_Model' or self.model_type == 'VQAGAP_qbert_dca_Model':
             if self.train:
                 return question[0], np.array(question[1], dtype='int16'), imgT, question[3]
             else:
