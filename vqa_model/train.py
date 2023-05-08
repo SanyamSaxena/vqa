@@ -200,7 +200,7 @@ if __name__ == '__main__':
     parser.add_argument('--bs',
                         type=int, default=70)
     parser.add_argument('--gpu',
-                        type=int, default=0)
+                        type=int, default=6)
     parser.add_argument('--epochs',
                         type=int, default=150)
     parser.add_argument('--lr',
