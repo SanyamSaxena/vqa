@@ -1143,3 +1143,115 @@ class VQAGAP_qbert_dca_Model_finetune(nn.Module):
         x = self.linear_classif3(x)
         
         return x
+
+
+class VQAGAP_bert_ca_max_avg_pooled(nn.Module):
+    def __init__(self, vocab_questions, vocab_answers, args, pretrained_resnet=True):
+        super(VQAGAP_qbert_dca_Model_finetune, self).__init__()
+        self.args = args
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+        self.vocab_questions = vocab_questions
+        self.vocab_answers = vocab_answers
+        self.num_classes = len(self.vocab_answers)
+        
+        self.dropoutF = torch.nn.Dropout(DROPOUT_F)
+
+        self.visual = torchmodels.resnet152(pretrained=True)
+        self.layers = list(self.visual._modules.keys())
+        
+        self.dummy_var = self.visual._modules.pop(self.layers[9])
+        self.dummy_var = self.visual._modules.pop(self.layers[8])
+        self.layer4 = self.visual._modules.pop(self.layers[7])
+        self.layer3 = self.visual._modules.pop(self.layers[6])
+        self.layer2 = self.visual._modules.pop(self.layers[5])
+        self.layer1 = nn.Sequential(self.visual._modules)
+        self.layer2 = nn.Sequential(self.layer2)
+        self.layer3 = nn.Sequential(self.layer3)
+        self.layer4 = nn.Sequential(self.layer4)
+
+        for param in self.layer1.parameters():
+            param.requires_grad = pretrained_resnet
+        for param in self.layer2.parameters():
+            param.requires_grad = pretrained_resnet
+        for param in self.layer3.parameters():
+            param.requires_grad = pretrained_resnet
+        for param in self.layer4.parameters():
+            param.requires_grad = pretrained_resnet
+        
+        self.g1 = 256
+        self.g2 = 512
+        self.g3 = 1024
+        self.g4 = 2048
+
+        self.dim_chg_gap1 = nn.Sequential(
+            nn.Linear(self.g1, 2048),
+            nn.Sigmoid()
+        )
+        self.dim_chg_gap2 = nn.Sequential(
+            nn.Linear(self.g2, 2048),
+            nn.Sigmoid()
+        )
+        self.dim_chg_gap3 = nn.Sequential(
+            nn.Linear(self.g3, 2048),
+            nn.Sigmoid()
+        )
+        self.dim_chg_gap4 = nn.Sequential(
+            nn.Linear(self.g4, 2048),
+            nn.Sigmoid()
+        )
+
+        self.w1 = nn.Parameter(torch.tensor(0.25))
+        self.w2 = nn.Parameter(torch.tensor(0.25))
+        self.w3 = nn.Parameter(torch.tensor(0.25))
+        self.w4 = nn.Parameter(torch.tensor(0.25))
+        
+        self.question_2x = nn.Linear(128, 4096)
+        self.linear_classif1 = nn.Linear(4096*2, 1200)
+        self.linear_classif2 = nn.Linear(1200, FUSION_HIDDEN)
+        self.linear_classif3 = nn.Linear(FUSION_HIDDEN, self.num_classes)
+        
+    def forward(self, input_v, input_q):
+        # create placeholders for the VisualBERT, these necessary for special tasks (then there are not only 1)
+        x_q = self.tokenizer(input_q, return_tensors='pt', padding='max_length', max_length=128)
+
+        # reject a possible leading 0 dimension
+        for key in x_q.keys():
+          x_q[key].long().squeeze(0)
+
+        x_q_2x = self.question_2x(x_q)
+
+        x_v_1=self.layer1(input_v)
+        x_v_2=self.layer2(x_v_1)
+        x_v_3=self.layer3(x_v_2)
+        x_v_4=self.layer4(x_v_3)
+
+        x_v_1_avg = torch.mean(x_v_1, axis=(2,3))
+        x_v_2_avg = torch.mean(x_v_2, axis=(2,3))
+        x_v_3_avg = torch.mean(x_v_3, axis=(2,3))
+        x_v_4_avg = torch.mean(x_v_4, axis=(2,3))
+
+        x_v_1=self.dim_chg_gap1(x_v_1_avg)
+        x_v_2=self.dim_chg_gap3(x_v_2_avg)
+        x_v_3=self.dim_chg_gap4(x_v_3_avg)
+        x_v_4=self.dim_chg_gap2(x_v_4_avg)
+
+        x_v_avg = torch.mean((self.w1*x_v_1, self.w2*x_v_2, self.w3*x_v_3, self.w4*x_v_4),1)
+        x_v_max = torch.max((self.w1*x_v_1, self.w2*x_v_2, self.w3*x_v_3, self.w4*x_v_4),1)
+        x_v_pooled = torch.cat((x_v_max,x_v_avg), 1)
+        # x_v_pooled = torch.cat((x_v_max,x_v_avg), 1).to(input_ids_1.dtype)
+
+        B,N = x_v.shape
+        x_v = x_v.view(B,1,N)
+
+        x_attn = x_v_pooled*x_q_2x
+        x = torch.cat((x_q_2x,x_attn),1)
+
+        x = self.linear_classif1(x)
+        x = nn.Tanh()(x)
+        x = self.dropoutF(x)
+        x = self.linear_classif2(x)
+        x = nn.Tanh()(x)
+        x = self.linear_classif3(x)
+        
+        return x
