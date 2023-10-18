@@ -62,7 +62,8 @@ def train(model, train_dataset, validate_dataset, batch_size, num_epochs, learni
                 #     print(i/len(validate_loader))
                 question, answer, image, type_str, image_original = data
                 
-                if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+                # if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+                if 'bert' in args.model.split('_') or 'qbert' in args.model.split('_'):
                     # question = Variable(question).cuda()
                     # question = question.cuda()
                     
@@ -77,7 +78,8 @@ def train(model, train_dataset, validate_dataset, batch_size, num_epochs, learni
                 else:
                     pred = RSVQA(image,question)
                 loss = criterion(pred, answer)
-                if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+                # if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+                if 'bert' in args.model.split('_') or 'qbert' in args.model.split('_'):
                     runningLoss += loss.cpu().item() * len(question)
                 else:
                     runningLoss += loss.cpu().item() * question.shape[0]
@@ -94,7 +96,8 @@ def train(model, train_dataset, validate_dataset, batch_size, num_epochs, learni
                 viz_img = T.ToPILImage()(image_original[0].float().data.cpu())
                 if modeltype == 'MCB':
                     viz_att =  torch.squeeze(att_map[0,...]).data.cpu().numpy()
-                if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+                # if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+                if 'bert' in args.model.split('_') or 'qbert' in args.model.split('_'):
                     viz_question = question[0]
                 else:
                     viz_question = encoder_questions.decode(question[0].data.cpu().numpy())
@@ -145,7 +148,8 @@ def train(model, train_dataset, validate_dataset, batch_size, num_epochs, learni
             # if i % 1000 == 999:
             #     print(i/len(train_loader))
             question, answer, image, _ = data
-            if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+            # if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+            if 'bert' in args.model.split('_') or 'qbert' in args.model.split('_'):
                 answer = Variable(answer.long()).to(torch.device(f'cuda:{args.gpu}')).resize_(len(question))
             else:
                 question = Variable(question.long()).to(torch.device(f'cuda:{args.gpu}'))
@@ -161,7 +165,8 @@ def train(model, train_dataset, validate_dataset, batch_size, num_epochs, learni
             loss.backward()
             optimizer.step()
 
-            if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+            # if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+            if 'bert' in args.model.split('_') or 'qbert' in args.model.split('_'):
                 runningLoss += loss.cpu().item() * len(question)
             else:        
                 runningLoss += loss.cpu().item() * question.shape[0]
@@ -281,7 +286,9 @@ if __name__ == '__main__':
         elif args.model == 'VQAGAP_qbert_dca_Model':
             RSVQA = model.VQAGAP_qbert_dca_Model(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
         elif args.model == 'VQAGAP_qbert_dca_Model_finetune':
-            RSVQA = model.VQAGAP_qbert_dca_Model_finetune(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
+            RSVQA = model.VQAGAP_qbert_dca_Model_finetune(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  pretrained_resnet=False).to(torch.device(f'cuda:{args.gpu}'))
+        elif args.model == 'VQAGAP_bert_ca_max_avg_pooled':
+            RSVQA = model.VQAGAP_bert_ca_max_avg_pooled(encoder_questions.getVocab(), encoder_answers.getVocab(), args).to(torch.device(f'cuda:{args.gpu}'))
         # elif args.model == 'VQA_qbert_Model':
         #     train_dataset = VQALoader.VQA_BERT_Loader(images_path, imagesJSON, questionsJSON, answersJSON, encoder_questions, encoder_answers, train=True, ratio_images_to_use=ratio_images_to_use, transform=transform, patch_size = patch_size)
         #     validate_dataset = VQALoader.VQA_BERT_Loader(images_path, imagesvalJSON, questionsvalJSON, answersvalJSON, encoder_questions, encoder_answers, train=False, ratio_images_to_use=ratio_images_to_use, transform=transform, patch_size = patch_size)
