@@ -29,11 +29,9 @@ print(os.getpid())
 def test(model, test_dataset, batch_size, num_epochs, learning_rate, modeltype, args, Dataset='HR'):
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=2)
         
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad,RSVQA.parameters()), lr=learning_rate)
     criterion = torch.nn.CrossEntropyLoss()#weight=weights)
         
     testLoss = []
-    min_testLoss = float('inf')
     
     if Dataset == 'HR':
         accPerQuestionType = {'area': [], 'presence': [], 'count': [], 'comp': []}
@@ -52,10 +50,10 @@ def test(model, test_dataset, batch_size, num_epochs, learning_rate, modeltype, 
         else:
             countQuestionType = {'presence': 0, 'count': 0, 'comp': 0, 'rural_urban': 0}
             rightAnswerByQuestionType = {'presence': 0, 'count': 0, 'comp': 0, 'rural_urban': 0}
-        count_q = 0
+
         for i, data in enumerate(tqdm(test_loader)):
             question, answer, image, type_str, image_original = data                
-            if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_qbert_dca_Model':
+            if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
                 answer = Variable(answer.long()).to(torch.device(f'cuda:{args.gpu}')).resize_(len(question))
             else:
                 question = Variable(question.long()).to(torch.device(f'cuda:{args.gpu}'))
@@ -66,7 +64,7 @@ def test(model, test_dataset, batch_size, num_epochs, learning_rate, modeltype, 
             else:
                 pred = RSVQA(image,question)
             loss = criterion(pred, answer)
-            if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_qbert_dca_Model':
+            if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_qbert_dca_Model'  or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
                 runningLoss += loss.cpu().item() * len(question)
             else:
                 runningLoss += loss.cpu().item() * question.shape[0]
@@ -165,13 +163,21 @@ if __name__ == '__main__':
             RSVQA = model.VQAModel(encoder_questions.getVocab(), encoder_answers.getVocab(), args, input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
         elif args.model == 'VQAGAPModel':
             RSVQA = model.VQAGAPModel(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
+        elif args.model == 'VQAGAPModel_finetune':
+            RSVQA = model.VQAGAPModel_finetune(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
         elif args.model == 'VQAGAP_qbert_Model':
             RSVQA = model.VQAGAP_qbert_Model(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
+        elif args.model == 'VQAGAP_qbert_Model_finetune':
+            RSVQA = model.VQAGAP_qbert_Model_finetune(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
         elif args.model == 'VQAGAP_bert_Model':
             RSVQA = model.VQAGAP_bert_Model(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
+        elif args.model == 'VQAGAP_bert_Model_finetune':
+            RSVQA = model.VQAGAP_bert_Model_finetune(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
         elif args.model == 'VQAGAP_qbert_dca_Model':
             RSVQA = model.VQAGAP_qbert_dca_Model(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
-    
+        elif args.model == 'VQAGAP_qbert_dca_Model_finetune':
+            RSVQA = model.VQAGAP_qbert_dca_Model_finetune(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
+        
     RSVQA.load_state_dict(torch.load(model_path))
     RSVQA = test(RSVQA, test_dataset, batch_size, num_epochs, learning_rate, modeltype, args, Dataset)
     
