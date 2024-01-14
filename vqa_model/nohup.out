@@ -1,0 +1,5 @@
+3317308
+Traceback (most recent call last):
+  File "/raid/biplab/phduser3/khyati_sanyam/vqa/vqa_model/test.py", line 190, in <module>
+    RSVQA.load_state_dict(torch.load(model_path))
+NameError: name 'RSVQA' is not defined

@@ -52,8 +52,17 @@ def test(model, test_dataset, batch_size, num_epochs, learning_rate, modeltype, 
             rightAnswerByQuestionType = {'presence': 0, 'count': 0, 'comp': 0, 'rural_urban': 0}
 
         for i, data in enumerate(tqdm(test_loader)):
-            question, answer, image, type_str, image_original = data                
-            if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+            if args.model[:9]=="VQAGAPGCN":
+                question, answer, image, type_str, image_original, rag_info = data
+            else:
+                question, answer, image, type_str, image_original = data      
+
+            if 'bert' in args.model.split('_') or 'qbert' in args.model.split('_'):
+                if args.model[:9]=="VQAGAPGCN":
+                    data_x = Variable(rag_info[0]).to(torch.device(f'cuda:{args.gpu}'))
+                    edge_index = Variable(rag_info[1]).to(torch.device(f'cuda:{args.gpu}'))
+                    num_vertices = rag_info[2]
+                    num_edges = rag_info[3]
                 answer = Variable(answer.long()).to(torch.device(f'cuda:{args.gpu}')).resize_(len(question))
             else:
                 question = Variable(question.long()).to(torch.device(f'cuda:{args.gpu}'))
@@ -62,9 +71,12 @@ def test(model, test_dataset, batch_size, num_epochs, learning_rate, modeltype, 
             if modeltype == 'MCB':
                 pred, att_map = RSVQA(image,question)
             else:
-                pred = RSVQA(image,question)
+                if args.model[:9]=="VQAGAPGCN":
+                    pred = RSVQA(image,question,data_x,edge_index, num_vertices, num_edges)
+                else:
+                    pred = RSVQA(image,question)
             loss = criterion(pred, answer)
-            if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_qbert_dca_Model'  or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
+            if 'bert' in args.model.split('_') or 'qbert' in args.model.split('_'):
                 runningLoss += loss.cpu().item() * len(question)
             else:
                 runningLoss += loss.cpu().item() * question.shape[0]
@@ -82,9 +94,11 @@ def test(model, test_dataset, batch_size, num_epochs, learning_rate, modeltype, 
         numQuestions = 0
         numRightQuestions = 0
         currentAA = 0
+        print('Per category accuracy')
         for type_str in countQuestionType.keys():
             if countQuestionType[type_str] > 0:
                 accPerQuestionType[type_str].append(rightAnswerByQuestionType[type_str] * 1.0 / countQuestionType[type_str])
+                print(f'{type_str}: {accPerQuestionType[type_str][0]}')
             numQuestions += countQuestionType[type_str]
             numRightQuestions += rightAnswerByQuestionType[type_str]
             currentAA += accPerQuestionType[type_str][0]
@@ -93,6 +107,7 @@ def test(model, test_dataset, batch_size, num_epochs, learning_rate, modeltype, 
         AA.append(currentAA * 1.0 / 4)
         print('OA: %.3f' % (OA[0]))
         print('AA: %.3f' % (AA[0]))
+        
         
 
 if __name__ == '__main__':    
@@ -177,7 +192,15 @@ if __name__ == '__main__':
             RSVQA = model.VQAGAP_qbert_dca_Model(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
         elif args.model == 'VQAGAP_qbert_dca_Model_finetune':
             RSVQA = model.VQAGAP_qbert_dca_Model_finetune(encoder_questions.getVocab(), encoder_answers.getVocab(), args,  input_size = patch_size).to(torch.device(f'cuda:{args.gpu}'))
-        
+        elif args.model == 'VQAGAP_qbert_max_avg_pooled':
+            RSVQA = model.VQAGAP_qbert_max_avg_pooled(encoder_questions.getVocab(), encoder_answers.getVocab(), args).to(torch.device(f'cuda:{args.gpu}'))
+        elif args.model == 'VQAGAP_bert_ca_max_avg_pooled':
+            RSVQA = model.VQAGAP_bert_ca_max_avg_pooled(encoder_questions.getVocab(), encoder_answers.getVocab(), args).to(torch.device(f'cuda:{args.gpu}'))
+        elif args.model == 'VQAGAP_qbert_max_avg_pooled_pretrained':
+            RSVQA = model.VQAGAP_qbert_max_avg_pooled(encoder_questions.getVocab(), encoder_answers.getVocab(),args, finetune_resnet=False).to(torch.device(f'cuda:{args.gpu}'))
+        elif args.model == 'VQAGAPGCN_qbert_max_avg_pooled':
+            RSVQA = model.VQAGAPGCN_qbert_max_avg_pooled(encoder_questions.getVocab(), encoder_answers.getVocab(), args).to(torch.device(f'cuda:{args.gpu}'))
+                
     RSVQA.load_state_dict(torch.load(model_path))
     RSVQA = test(RSVQA, test_dataset, batch_size, num_epochs, learning_rate, modeltype, args, Dataset)
     
