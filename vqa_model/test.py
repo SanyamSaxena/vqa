@@ -60,7 +60,8 @@ def test(model, test_dataset, batch_size, num_epochs, learning_rate, modeltype, 
             if 'bert' in args.model.split('_') or 'qbert' in args.model.split('_'):
                 if args.model[:9]=="VQAGAPGCN":
                     data_x = Variable(rag_info[0]).to(torch.device(f'cuda:{args.gpu}'))
-                    edge_index = Variable(rag_info[1]).to(torch.device(f'cuda:{args.gpu}'))
+                    edge_index = Variable(rag_info[1][0]).to(torch.device(f'cuda:{args.gpu}'))
+                    edge_weight = Variable(rag_info[1][1]).to(torch.device(f'cuda:{args.gpu}'))
                     num_vertices = rag_info[2]
                     num_edges = rag_info[3]
                 answer = Variable(answer.long()).to(torch.device(f'cuda:{args.gpu}')).resize_(len(question))
@@ -72,7 +73,7 @@ def test(model, test_dataset, batch_size, num_epochs, learning_rate, modeltype, 
                 pred, att_map = RSVQA(image,question)
             else:
                 if args.model[:9]=="VQAGAPGCN":
-                    pred = RSVQA(image,question,data_x,edge_index, num_vertices, num_edges)
+                    pred = RSVQA(image,question,data_x,edge_index,edge_weight, num_vertices, num_edges)
                 else:
                     pred = RSVQA(image,question)
             loss = criterion(pred, answer)

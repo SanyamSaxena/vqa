@@ -60,8 +60,11 @@ def train(model, train_dataset, validate_dataset, batch_size, num_epochs, learni
             for i, data in enumerate(tqdm(validate_loader)):
                 # if i % 1000 == 999:
                 #     print(i/len(validate_loader))
-                if args.model[:9]=="VQAGAPGCN":
-                    question, answer, image, type_str, image_original, rag_info = data
+                if args.model[:9]=="VQAGAPGCN" or args.model[:22]=="VQAGAPGraphTransformer":
+                    if args.model[:30]=="VQAGAPGraphTransformer_caption":
+                        question, answer, image, type_str, image_original, rag_info, captions = data
+                    else:
+                        question, answer, image, type_str, image_original, rag_info = data
                 else:
                     question, answer, image, type_str, image_original = data
                 
@@ -69,9 +72,10 @@ def train(model, train_dataset, validate_dataset, batch_size, num_epochs, learni
                 if 'bert' in args.model.split('_') or 'qbert' in args.model.split('_'):
                     # question = Variable(question).cuda()
                     # question = question.cuda()
-                    if args.model[:9]=="VQAGAPGCN":
+                    if args.model[:9]=="VQAGAPGCN" or args.model[:22]=="VQAGAPGraphTransformer":
                         data_x = Variable(rag_info[0]).to(torch.device(f'cuda:{args.gpu}'))
-                        edge_index = Variable(rag_info[1]).to(torch.device(f'cuda:{args.gpu}'))
+                        edge_index = Variable(rag_info[1][0]).to(torch.device(f'cuda:{args.gpu}'))
+                        edge_weight = Variable(rag_info[1][1]).to(torch.device(f'cuda:{args.gpu}'))
                         num_vertices = rag_info[2]
                         num_edges = rag_info[3]
                     answer = Variable(answer.long()).to(torch.device(f'cuda:{args.gpu}')).resize_(len(question))
@@ -83,11 +87,15 @@ def train(model, train_dataset, validate_dataset, batch_size, num_epochs, learni
                 if modeltype == 'MCB':
                     pred, att_map = RSVQA(image,question)
                 else:
-                    if args.model[:9]=="VQAGAPGCN":
-                        pred = RSVQA(image,question,data_x,edge_index, num_vertices, num_edges)
+                    if args.model[:9]=="VQAGAPGCN" or args.model[:22]=="VQAGAPGraphTransformer":
+                        if args.model[:30]=="VQAGAPGraphTransformer_caption":
+                            pred = RSVQA(image, question, data_x, edge_index, edge_weight, num_vertices, num_edges, captions)
+                        else:
+                            pred = RSVQA(image, question, data_x, edge_index, edge_weight, num_vertices, num_edges)
                     else:
                         pred = RSVQA(image,question)
                 loss = criterion(pred, answer)
+                
                 # if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
                 if 'bert' in args.model.split('_') or 'qbert' in args.model.split('_'):
                     runningLoss += loss.cpu().item() * len(question)
@@ -133,6 +141,7 @@ def train(model, train_dataset, validate_dataset, batch_size, num_epochs, learni
                 plt.close(fig1)
                         
             valLoss.append(runningLoss / len(validate_dataset))
+            
             print('epoch #%d val loss: %.3f' % (epoch, valLoss[epoch]))
                         
             numQuestions = 0
@@ -157,15 +166,20 @@ def train(model, train_dataset, validate_dataset, batch_size, num_epochs, learni
         for i, data in enumerate(tqdm(train_loader)):
             # if i % 1000 == 999:
             #     print(i/len(train_loader))
-            if args.model[:9]=="VQAGAPGCN":
-                question, answer, image, _ , rag_info= data
+            if args.model[:9]=="VQAGAPGCN" or args.model[:22]=="VQAGAPGraphTransformer":
+                if args.model[:30]=="VQAGAPGraphTransformer_caption":
+                    question, answer, image, _ , rag_info, captions= data
+                else:
+                    question, answer, image, _ , rag_info= data
+
             else:
                 question, answer, image, _ = data
             # if args.model == 'VQAGAP_qbert_Model' or args.model == 'VQAGAP_qbert_Model_finetune' or args.model == 'VQAGAP_bert_Model' or args.model == 'VQAGAP_bert_Model_finetune' or args.model == 'VQAGAP_qbert_dca_Model' or args.model == 'VQAGAP_qbert_dca_Model_finetune':
             if 'bert' in args.model.split('_') or 'qbert' in args.model.split('_'):
-                if args.model[:9]=="VQAGAPGCN":
+                if args.model[:9]=="VQAGAPGCN" or args.model[:22]=="VQAGAPGraphTransformer":
                     data_x = Variable(rag_info[0]).to(torch.device(f'cuda:{args.gpu}'))
-                    edge_index = Variable(rag_info[1]).to(torch.device(f'cuda:{args.gpu}'))
+                    edge_index = Variable(rag_info[1][0]).to(torch.device(f'cuda:{args.gpu}'))
+                    edge_weight = Variable(rag_info[1][1]).to(torch.device(f'cuda:{args.gpu}'))
                     num_vertices = rag_info[2]
                     num_edges = rag_info[3]
                 answer = Variable(answer.long()).to(torch.device(f'cuda:{args.gpu}')).resize_(len(question))
@@ -177,8 +191,11 @@ def train(model, train_dataset, validate_dataset, batch_size, num_epochs, learni
             if modeltype == 'MCB':
                 pred, att_map = RSVQA(image,question)
             else:
-                if args.model[:9]=="VQAGAPGCN":
-                    pred = RSVQA(image,question,data_x,edge_index, num_vertices, num_edges)
+                if args.model[:9]=="VQAGAPGCN" or args.model[:22]=="VQAGAPGraphTransformer":
+                    if args.model[:30]=="VQAGAPGraphTransformer_caption":
+                        pred = RSVQA(image,question,data_x,edge_index, edge_weight, num_vertices, num_edges, captions)
+                    else:
+                        pred = RSVQA(image,question,data_x,edge_index, edge_weight, num_vertices, num_edges)
                 else:
                     pred = RSVQA(image,question)
             loss = criterion(pred, answer)
@@ -223,9 +240,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='PyTorch Training')
     parser.add_argument('--bs',
-                        type=int, default=70)
+                        type=int, default=40)
     parser.add_argument('--gpu',
-                        type=int, default=6)
+                        type=int, default=0)
     parser.add_argument('--epochs',
                         type=int, default=150)
     parser.add_argument('--lr',
@@ -251,6 +268,7 @@ if __name__ == '__main__':
         answersvalJSON = os.path.join(data_path, 'LR_split_val_answers.json')
         imagesvalJSON = os.path.join(data_path, 'LR_split_val_images.json')
         images_path = os.path.join(data_path, 'data/')
+        captions_path = os.path.join(data_path, 'captions.json')
     else:
         data_path = '../data/hrdataset/'
         images_path = os.path.join(data_path, 'Data/')
@@ -283,8 +301,8 @@ if __name__ == '__main__':
     else:
         patch_size = 512  
          
-    train_dataset = VQALoader.VQALoader(images_path, imagesJSON, questionsJSON, answersJSON, encoder_questions, encoder_answers, args.model, train=True, ratio_images_to_use=ratio_images_to_use, transform=transform, patch_size = patch_size)
-    validate_dataset = VQALoader.VQALoader(images_path, imagesvalJSON, questionsvalJSON, answersvalJSON, encoder_questions, encoder_answers, args.model, train=False, ratio_images_to_use=ratio_images_to_use, transform=transform, patch_size = patch_size)
+    train_dataset = VQALoader.VQALoader(captions_path, images_path, imagesJSON, questionsJSON, answersJSON, encoder_questions, encoder_answers, args.model, train=True, ratio_images_to_use=ratio_images_to_use, transform=transform, patch_size = patch_size)
+    validate_dataset = VQALoader.VQALoader(captions_path, images_path, imagesvalJSON, questionsvalJSON, answersvalJSON, encoder_questions, encoder_answers, args.model, train=False, ratio_images_to_use=ratio_images_to_use, transform=transform, patch_size = patch_size)
     
     
     if modeltype == 'MCB':
@@ -316,6 +334,8 @@ if __name__ == '__main__':
             RSVQA = model.VQAGAP_qbert_max_avg_pooled(encoder_questions.getVocab(), encoder_answers.getVocab(),args, finetune_resnet=False).to(torch.device(f'cuda:{args.gpu}'))
         elif args.model == 'VQAGAPGCN_qbert_max_avg_pooled':
             RSVQA = model.VQAGAPGCN_qbert_max_avg_pooled(encoder_questions.getVocab(), encoder_answers.getVocab(), args).to(torch.device(f'cuda:{args.gpu}'))
+        elif args.model == 'VQAGAPGraphTransformer_caption_qbert_max_avg_pooled':
+            RSVQA = model.VQAGAPGraphTransformer_caption_qbert_max_avg_pooled(encoder_questions.getVocab(), encoder_answers.getVocab(), args).to(torch.device(f'cuda:{args.gpu}'))
         # elif args.model == 'VQA_qbert_Model':
         #     train_dataset = VQALoader.VQA_BERT_Loader(images_path, imagesJSON, questionsJSON, answersJSON, encoder_questions, encoder_answers, train=True, ratio_images_to_use=ratio_images_to_use, transform=transform, patch_size = patch_size)
         #     validate_dataset = VQALoader.VQA_BERT_Loader(images_path, imagesvalJSON, questionsvalJSON, answersvalJSON, encoder_questions, encoder_answers, train=False, ratio_images_to_use=ratio_images_to_use, transform=transform, patch_size = patch_size)
@@ -323,3 +343,4 @@ if __name__ == '__main__':
     RSVQA = train(RSVQA, train_dataset, validate_dataset, batch_size, num_epochs, learning_rate, modeltype, args, Dataset)
     
     
+#lxmert, graph transformer, clipclap mohammad
